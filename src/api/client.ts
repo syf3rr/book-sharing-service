@@ -1,7 +1,6 @@
-export type AuthResponse = {
-  token: string
-  user: { id: string; email: string; role: string; name: string }
-}
+import { API_ENDPOINTS } from '../constants'
+import type { AuthResponse, Book, BooksResponse, BookSearchParams, AddBookParams, ExchangeRequest, ExchangeRequestResponse, ExchangeRequestData, ExchangeRequestsResponse } from '../types'
+import { isNetworkError } from '../utils/helpers'
 
 const defaultHeaders = (): HeadersInit => ({
   'Content-Type': 'application/json',
@@ -28,7 +27,7 @@ async function readErrorMessage(res: Response, fallback: string): Promise<string
 
 export async function apiRegister(name: string, email: string, password: string): Promise<AuthResponse> {
   try {
-    const res = await fetch('/api/register', {
+    const res = await fetch(API_ENDPOINTS.AUTH.REGISTER, {
       method: 'POST',
       headers: defaultHeaders(),
       body: JSON.stringify({ name, email, password }),
@@ -38,7 +37,7 @@ export async function apiRegister(name: string, email: string, password: string)
     if (!data) throw new Error('Registration failed: empty response')
     return data
   } catch (error) {
-    if (error instanceof TypeError && error.message.includes('fetch')) {
+    if (isNetworkError(error)) {
       throw new Error('Network error: Please check if the server is running')
     }
     throw error
@@ -47,7 +46,7 @@ export async function apiRegister(name: string, email: string, password: string)
 
 export async function apiLogin(email: string, password: string): Promise<AuthResponse> {
   try {
-    const res = await fetch('/api/login', {
+    const res = await fetch(API_ENDPOINTS.AUTH.LOGIN, {
       method: 'POST',
       headers: defaultHeaders(),
       body: JSON.stringify({ email, password }),
@@ -57,35 +56,28 @@ export async function apiLogin(email: string, password: string): Promise<AuthRes
     if (!data) throw new Error('Login failed: empty response')
     return data
   } catch (error) {
-    if (error instanceof TypeError && error.message.includes('fetch')) {
+    if (isNetworkError(error)) {
       throw new Error('Network error: Please check if the server is running')
     }
     throw error
   }
 }
 
-export async function apiMe(token: string): Promise<{ user: { id: string; email: string; role: string; name: string } }> {
-  const res = await fetch('/api/me', {
+export async function apiMe(token: string): Promise<{ user: AuthResponse['user'] }> {
+  const res = await fetch(API_ENDPOINTS.AUTH.ME, {
     headers: {
       ...defaultHeaders(),
       Authorization: `Bearer ${token}`,
     },
   })
   if (!res.ok) throw new Error(await readErrorMessage(res, 'Unauthorized'))
-  const data = await parseJsonSafe<{ user: { id: string; email: string; role: string; name: string } }>(res)
+  const data = await parseJsonSafe<{ user: AuthResponse['user'] }>(res)
   if (!data) throw new Error('Unauthorized: empty response')
   return data
 }
 
-export type Book = {
-  id: string
-  name: string
-  author: string
-  photoUrl: string | null
-}
-
 export async function apiGetMyBooks(token: string): Promise<{ books: Book[] }> {
-  const res = await fetch('/api/me/books', {
+  const res = await fetch(API_ENDPOINTS.BOOKS.MY_BOOKS, {
     headers: {
       ...defaultHeaders(),
       Authorization: `Bearer ${token}`,
@@ -97,8 +89,8 @@ export async function apiGetMyBooks(token: string): Promise<{ books: Book[] }> {
   return data
 }
 
-export async function apiAddBook(token: string, book: { name: string; author: string; photoUrl?: string }): Promise<{ book: Book }> {
-  const res = await fetch('/api/me/books', {
+export async function apiAddBook(token: string, book: AddBookParams): Promise<{ book: Book }> {
+  const res = await fetch(API_ENDPOINTS.BOOKS.ADD, {
     method: 'POST',
     headers: {
       ...defaultHeaders(),
@@ -113,7 +105,7 @@ export async function apiAddBook(token: string, book: { name: string; author: st
 }
 
 export async function apiDeleteBook(token: string, bookId: string): Promise<void> {
-  const res = await fetch(`/api/me/books/${bookId}`, {
+  const res = await fetch(API_ENDPOINTS.BOOKS.DELETE(bookId), {
     method: 'DELETE',
     headers: {
       ...defaultHeaders(),
@@ -121,6 +113,91 @@ export async function apiDeleteBook(token: string, bookId: string): Promise<void
     },
   })
   if (!res.ok) throw new Error(await readErrorMessage(res, 'Failed to delete book'))
+}
+
+export async function apiGetBooks(params: BookSearchParams): Promise<BooksResponse> {
+  const searchParams = new URLSearchParams()
+  if (params.search) searchParams.set('search', params.search)
+  if (params.sort) searchParams.set('sort', params.sort)
+  if (params.page) searchParams.set('page', params.page.toString())
+  if (params.limit) searchParams.set('limit', params.limit.toString())
+
+  const res = await fetch(`${API_ENDPOINTS.BOOKS.LIST}?${searchParams.toString()}`)
+  if (!res.ok) throw new Error(await readErrorMessage(res, 'Failed to fetch books'))
+  const data = await parseJsonSafe<BooksResponse>(res)
+  if (!data) throw new Error('Failed to fetch books: empty response')
+  return data
+}
+
+export async function apiGetBook(bookId: string): Promise<{ book: Book }> {
+  const res = await fetch(API_ENDPOINTS.BOOKS.DETAIL(bookId))
+  if (!res.ok) throw new Error(await readErrorMessage(res, 'Failed to fetch book'))
+  const data = await parseJsonSafe<{ book: Book }>(res)
+  if (!data) throw new Error('Failed to fetch book: empty response')
+  return data
+}
+
+export async function apiRequestExchange(token: string, request: ExchangeRequest): Promise<ExchangeRequestResponse> {
+  const res = await fetch(API_ENDPOINTS.BOOKS.EXCHANGE_REQUEST, {
+    method: 'POST',
+    headers: {
+      ...defaultHeaders(),
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(request),
+  })
+  if (!res.ok) throw new Error(await readErrorMessage(res, 'Failed to send exchange request'))
+  const data = await parseJsonSafe<ExchangeRequestResponse>(res)
+  if (!data) throw new Error('Failed to send exchange request: empty response')
+  return data
+}
+
+export async function apiGetExchangeRequests(token: string): Promise<ExchangeRequestsResponse> {
+  try {
+    const res = await fetch(API_ENDPOINTS.EXCHANGE.REQUESTS, {
+      headers: {
+        ...defaultHeaders(),
+        Authorization: `Bearer ${token}`,
+      },
+    })
+    if (!res.ok) throw new Error(await readErrorMessage(res, 'Failed to fetch exchange requests'))
+    const data = await parseJsonSafe<ExchangeRequestsResponse>(res)
+    if (!data) throw new Error('Failed to fetch exchange requests: empty response')
+    return data
+  } catch (error) {
+    if (isNetworkError(error)) {
+      throw new Error('Network error: Please check if the server is running')
+    }
+    throw error
+  }
+}
+
+export async function apiAcceptExchangeRequest(token: string, requestId: string): Promise<ExchangeRequestResponse> {
+  const res = await fetch(API_ENDPOINTS.EXCHANGE.ACCEPT(requestId), {
+    method: 'POST',
+    headers: {
+      ...defaultHeaders(),
+      Authorization: `Bearer ${token}`,
+    },
+  })
+  if (!res.ok) throw new Error(await readErrorMessage(res, 'Failed to accept exchange request'))
+  const data = await parseJsonSafe<ExchangeRequestResponse>(res)
+  if (!data) throw new Error('Failed to accept exchange request: empty response')
+  return data
+}
+
+export async function apiRejectExchangeRequest(token: string, requestId: string): Promise<ExchangeRequestResponse> {
+  const res = await fetch(API_ENDPOINTS.EXCHANGE.REJECT(requestId), {
+    method: 'POST',
+    headers: {
+      ...defaultHeaders(),
+      Authorization: `Bearer ${token}`,
+    },
+  })
+  if (!res.ok) throw new Error(await readErrorMessage(res, 'Failed to reject exchange request'))
+  const data = await parseJsonSafe<ExchangeRequestResponse>(res)
+  if (!data) throw new Error('Failed to reject exchange request: empty response')
+  return data
 }
 
 

@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Alert, Box, Button, Stack, TextField, Typography } from '@mui/material'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { ROUTES } from '../constants'
+import { formatError } from '../utils/helpers'
 
 export default function Register() {
   const { register } = useAuth()
@@ -18,9 +20,9 @@ export default function Register() {
     setLoading(true)
     try {
       await register(name, email, password)
-      navigate('/')
+      navigate(ROUTES.HOME)
     } catch (err: any) {
-      setError(err.message || 'Registration failed')
+      setError(formatError(err))
     } finally {
       setLoading(false)
     }
@@ -35,7 +37,7 @@ export default function Register() {
         <TextField label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} fullWidth required />
         <TextField label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} fullWidth required />
         <Button type="submit" variant="contained" disabled={loading}>{loading ? 'Registering...' : 'Register'}</Button>
-        <Typography variant="body2">Already have an account? <RouterLink to="/login">Login</RouterLink></Typography>
+        <Typography variant="body2">Already have an account? <RouterLink to={ROUTES.LOGIN}>Login</RouterLink></Typography>
       </Stack>
     </Box>
   )

@@ -1,4 +1,3 @@
-import React from 'react'
 import { CssBaseline, ThemeProvider, createTheme } from '@mui/material'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
@@ -7,12 +6,18 @@ import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import MyBooks from './pages/MyBooks'
 import AddBook from './pages/AddBook'
+import BooksList from './pages/BooksList'
+import BookDetails from './pages/BookDetails'
+import Exchange from './pages/Exchange'
+import TestExchange from './pages/TestExchange'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { ROUTES } from './constants'
+import type { ReactElement } from 'react'
 
-function PrivateRoute({ children }: { children: JSX.Element }) {
+function PrivateRoute({ children }: { children: ReactElement }) {
   const { user, loading } = useAuth()
   if (loading) return null
-  return user ? children : <Navigate to="/login" replace />
+  return user ? children : <Navigate to={ROUTES.LOGIN} replace />
 }
 
 const theme = createTheme()
@@ -25,11 +30,15 @@ export default function App() {
         <BrowserRouter>
           <Layout>
             <Routes>
-              <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/me/books" element={<PrivateRoute><MyBooks /></PrivateRoute>} />
-              <Route path="/me/books/add" element={<PrivateRoute><AddBook /></PrivateRoute>} />
+              <Route path={ROUTES.HOME} element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+              <Route path={ROUTES.LOGIN} element={<Login />} />
+              <Route path={ROUTES.REGISTER} element={<Register />} />
+              <Route path={ROUTES.MY_BOOKS} element={<PrivateRoute><MyBooks /></PrivateRoute>} />
+              <Route path={ROUTES.ADD_BOOK} element={<PrivateRoute><AddBook /></PrivateRoute>} />
+              <Route path={ROUTES.EXCHANGE} element={<PrivateRoute><Exchange /></PrivateRoute>} />
+              <Route path={ROUTES.TEST_EXCHANGE} element={<TestExchange />} />
+              <Route path={ROUTES.BOOKS} element={<BooksList />} />
+              <Route path="/books/:bookId" element={<BookDetails />} />
             </Routes>
           </Layout>
         </BrowserRouter>

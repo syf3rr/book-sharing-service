@@ -1,9 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { apiLogin, apiMe, apiRegister, type AuthResponse } from '../api/client'
+import { apiLogin, apiMe, apiRegister } from '../api/client'
+import type { AuthResponse, User } from '../types'
+import { STORAGE_KEYS } from '../constants'
 
-type User = { id: string; email: string; role: string; name: string }
-
-type AuthContextType = {
+interface AuthContextType {
   user: User | null
   token: string | null
   loading: boolean
@@ -14,16 +14,14 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-const TOKEN_KEY = 'auth_token'
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY))
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN))
   const [loading, setLoading] = useState<boolean>(true)
 
   useEffect(() => {
     async function init() {
-      const existing = localStorage.getItem(TOKEN_KEY)
+      const existing = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)
       if (!existing) {
         setLoading(false)
         return
@@ -34,7 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setToken(existing)
       } catch (error) {
         console.error('Auth initialization failed:', error)
-        localStorage.removeItem(TOKEN_KEY)
+        localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN)
         setUser(null)
         setToken(null)
       } finally {
@@ -45,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const applyAuth = useCallback((resp: AuthResponse) => {
-    localStorage.setItem(TOKEN_KEY, resp.token)
+    localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, resp.token)
     setToken(resp.token)
     setUser(resp.user)
   }, [])
@@ -61,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [applyAuth])
 
   const logout = useCallback(() => {
-    localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN)
     setUser(null)
     setToken(null)
   }, [])
