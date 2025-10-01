@@ -1,14 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, ReactNode } from 'react'
 import { apiLogin, apiMe, apiRegister, type AuthResponse } from '../api/client'
 
-type User = { id: string; email: string; role: string }
+type User = { id: string; email: string; role: string; name: string }
 
 type AuthContextType = {
   user: User | null
   token: string | null
   loading: boolean
   login: (email: string, password: string) => Promise<void>
-  register: (email: string, password: string) => Promise<void>
+  register: (name: string, email: string, password: string) => Promise<void>
   logout: () => void
 }
 
@@ -54,8 +54,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     applyAuth(resp)
   }, [applyAuth])
 
-  const register = useCallback(async (email: string, password: string) => {
-    const resp = await apiRegister(email, password)
+  const register = useCallback(async (name: string, email: string, password: string) => {
+    const resp = await apiRegister(name, email, password)
     applyAuth(resp)
   }, [applyAuth])
 

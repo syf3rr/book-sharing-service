@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 export default function Register() {
   const { register } = useAuth()
   const navigate = useNavigate()
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -16,7 +17,7 @@ export default function Register() {
     setError(null)
     setLoading(true)
     try {
-      await register(email, password)
+      await register(name, email, password)
       navigate('/')
     } catch (err: any) {
       setError(err.message || 'Registration failed')
@@ -30,6 +31,7 @@ export default function Register() {
       <Stack spacing={2}>
         <Typography variant="h5">Register</Typography>
         {error && <Alert severity="error">{error}</Alert>}
+        <TextField label="Name" type="text" value={name} onChange={(e) => setName(e.target.value)} fullWidth required />
         <TextField label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} fullWidth required />
         <TextField label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} fullWidth required />
         <Button type="submit" variant="contained" disabled={loading}>{loading ? 'Registering...' : 'Register'}</Button>
