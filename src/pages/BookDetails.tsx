@@ -71,6 +71,13 @@ export default function BookDetails() {
       return
     }
 
+    // Check if user is trying to request their own book
+    if (book.owner && book.owner.id === user.id) {
+      setSnackbarMessage('You cannot request an exchange for your own book')
+      setSnackbarOpen(true)
+      return
+    }
+
     try {
       setExchangeLoading(true)
       
@@ -271,7 +278,7 @@ export default function BookDetails() {
                 >
                   My Books
                 </Button>
-                {user && (
+                {user && book.owner && book.owner.id !== user.id && (
                   <Button 
                     variant="contained"
                     color="primary"

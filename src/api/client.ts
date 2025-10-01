@@ -25,12 +25,14 @@ async function readErrorMessage(res: Response, fallback: string): Promise<string
   }
 }
 
-export async function apiRegister(name: string, email: string, password: string): Promise<AuthResponse> {
+export async function apiRegister(name: string, email: string, password: string, isAdmin?: boolean): Promise<AuthResponse> {
   try {
+    const requestBody = { name, email, password, isAdmin }
+    console.log('API Register - Sending request body:', requestBody)
     const res = await fetch(API_ENDPOINTS.AUTH.REGISTER, {
       method: 'POST',
       headers: defaultHeaders(),
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify(requestBody),
     })
     if (!res.ok) throw new Error(await readErrorMessage(res, 'Registration failed'))
     const data = await parseJsonSafe<AuthResponse>(res)
@@ -197,6 +199,76 @@ export async function apiRejectExchangeRequest(token: string, requestId: string)
   if (!res.ok) throw new Error(await readErrorMessage(res, 'Failed to reject exchange request'))
   const data = await parseJsonSafe<ExchangeRequestResponse>(res)
   if (!data) throw new Error('Failed to reject exchange request: empty response')
+  return data
+}
+
+// Admin API functions
+export async function apiGetAllUsers(token: string): Promise<{ users: User[] }> {
+  const res = await fetch(API_ENDPOINTS.ADMIN.USERS, {
+    headers: {
+      ...defaultHeaders(),
+      Authorization: `Bearer ${token}`,
+    },
+  })
+  if (!res.ok) throw new Error(await readErrorMessage(res, 'Failed to fetch users'))
+  const data = await parseJsonSafe<{ users: User[] }>(res)
+  if (!data) throw new Error('Failed to fetch users: empty response')
+  return data
+}
+
+export async function apiGetAllBooks(token: string): Promise<{ books: Book[] }> {
+  const res = await fetch(API_ENDPOINTS.ADMIN.BOOKS, {
+    headers: {
+      ...defaultHeaders(),
+      Authorization: `Bearer ${token}`,
+    },
+  })
+  if (!res.ok) throw new Error(await readErrorMessage(res, 'Failed to fetch books'))
+  const data = await parseJsonSafe<{ books: Book[] }>(res)
+  if (!data) throw new Error('Failed to fetch books: empty response')
+  return data
+}
+
+export async function apiDeleteAnyBook(token: string, bookId: string): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(API_ENDPOINTS.ADMIN.DELETE_BOOK(bookId), {
+    method: 'DELETE',
+    headers: {
+      ...defaultHeaders(),
+      Authorization: `Bearer ${token}`,
+    },
+  })
+  if (!res.ok) throw new Error(await readErrorMessage(res, 'Failed to delete book'))
+  const data = await parseJsonSafe<{ success: boolean; message: string }>(res)
+  if (!data) throw new Error('Failed to delete book: empty response')
+  return data
+}
+
+export async function apiDeleteUser(token: string, userId: string): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(API_ENDPOINTS.ADMIN.DELETE_USER(userId), {
+    method: 'DELETE',
+    headers: {
+      ...defaultHeaders(),
+      Authorization: `Bearer ${token}`,
+    },
+  })
+  if (!res.ok) throw new Error(await readErrorMessage(res, 'Failed to delete user'))
+  const data = await parseJsonSafe<{ success: boolean; message: string }>(res)
+  if (!data) throw new Error('Failed to delete user: empty response')
+  return data
+}
+
+export async function apiUpdateUserRole(token: string, userId: string, role: 'admin' | 'user'): Promise<{ success: boolean; message: string; user: User }> {
+  const res = await fetch(API_ENDPOINTS.ADMIN.UPDATE_USER_ROLE(userId), {
+    method: 'PUT',
+    headers: {
+      ...defaultHeaders(),
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ role }),
+  })
+  if (!res.ok) throw new Error(await readErrorMessage(res, 'Failed to update user role'))
+  const data = await parseJsonSafe<{ success: boolean; message: string; user: User }>(res)
+  if (!data) throw new Error('Failed to update user role: empty response')
   return data
 }
 

@@ -1,8 +1,16 @@
+export type UserRole = 'admin' | 'user'
+
 export interface User {
   id: string
   email: string
-  role: string
+  role: UserRole
   name: string
+}
+
+export interface BookOwner {
+  id: string
+  name: string
+  email: string
 }
 
 export interface Book {
@@ -11,6 +19,7 @@ export interface Book {
   author: string
   photoUrl: string | null
   description?: string
+  owner?: BookOwner
 }
 
 export interface AuthResponse {

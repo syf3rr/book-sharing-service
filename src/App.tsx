@@ -10,6 +10,7 @@ import BooksList from './pages/BooksList'
 import BookDetails from './pages/BookDetails'
 import Exchange from './pages/Exchange'
 import TestExchange from './pages/TestExchange'
+import Admin from './pages/Admin'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ROUTES } from './constants'
 import type { ReactElement } from 'react'
@@ -37,6 +38,7 @@ export default function App() {
               <Route path={ROUTES.ADD_BOOK} element={<PrivateRoute><AddBook /></PrivateRoute>} />
               <Route path={ROUTES.EXCHANGE} element={<PrivateRoute><Exchange /></PrivateRoute>} />
               <Route path={ROUTES.TEST_EXCHANGE} element={<TestExchange />} />
+              <Route path={ROUTES.ADMIN} element={<PrivateRoute><Admin /></PrivateRoute>} />
               <Route path={ROUTES.BOOKS} element={<BooksList />} />
               <Route path="/books/:bookId" element={<BookDetails />} />
             </Routes>

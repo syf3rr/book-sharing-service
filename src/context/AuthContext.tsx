@@ -8,7 +8,7 @@ interface AuthContextType {
   token: string | null
   loading: boolean
   login: (email: string, password: string) => Promise<void>
-  register: (name: string, email: string, password: string) => Promise<void>
+  register: (name: string, email: string, password: string, isAdmin?: boolean) => Promise<void>
   logout: () => void
 }
 
@@ -43,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const applyAuth = useCallback((resp: AuthResponse) => {
+    console.log('AuthContext - Applying auth:', resp)
     localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, resp.token)
     setToken(resp.token)
     setUser(resp.user)
@@ -53,8 +54,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     applyAuth(resp)
   }, [applyAuth])
 
-  const register = useCallback(async (name: string, email: string, password: string) => {
-    const resp = await apiRegister(name, email, password)
+  const register = useCallback(async (name: string, email: string, password: string, isAdmin?: boolean) => {
+    const resp = await apiRegister(name, email, password, isAdmin)
     applyAuth(resp)
   }, [applyAuth])
 

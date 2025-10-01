@@ -19,6 +19,19 @@ app.use(express.json())
 const users = new Map()
 let nextUserId = 1
 
+// Add default admin user
+const adminPassword = bcrypt.hashSync('admin123', 10)
+users.set('admin@example.com', {
+  id: 'admin',
+  email: 'admin@example.com',
+  passwordHash: adminPassword,
+  role: 'admin',
+  name: 'Admin User',
+  isEmailVerified: true
+})
+
+console.log('Default admin created:', users.get('admin@example.com'))
+
 // In-memory book storage: Map<userId, Book[]>
 const books = new Map()
 let nextBookId = 1
@@ -127,7 +140,9 @@ app.get('/api/health', (_req, res) => {
 
 // Register
 app.post('/api/register', async (req, res) => {
-  const { name, email, password } = req.body || {}
+  const { name, email, password, isAdmin } = req.body || {}
+  console.log('Register request:', { name, email, isAdmin, isAdminType: typeof isAdmin })
+  console.log('Full request body:', req.body)
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required' })
   }
@@ -138,12 +153,24 @@ app.post('/api/register', async (req, res) => {
   }
 
   const passwordHash = await bcrypt.hash(password, 10)
+  // Convert isAdmin to boolean - handle undefined, null, false, 'false', true, 'true'
+  // Only set admin if explicitly true
+  const isAdminBool = isAdmin === true || isAdmin === 'true' || isAdmin === 1 || isAdmin === '1'
+  const role = isAdminBool ? 'admin' : 'user'
+  console.log('Setting role:', role, 'for isAdmin:', isAdmin, 'converted to:', isAdminBool)
+  console.log('isAdmin comparison results:', {
+    'isAdmin === true': isAdmin === true,
+    'isAdmin === "true"': isAdmin === 'true',
+    'isAdmin === 1': isAdmin === 1,
+    'isAdmin === "1"': isAdmin === '1',
+    'final isAdminBool': isAdminBool
+  })
   const user = {
     id: String(nextUserId++),
     email: lowerEmail,
     passwordHash,
     name: name || email.split('@')[0], // Default name if not provided
-    role: 'User',
+    role: role,
     isEmailVerified: false,
   }
   users.set(lowerEmail, user)
@@ -175,7 +202,7 @@ app.post('/api/login', async (req, res) => {
   }
 
   const token = generateToken({ sub: user.id, role: user.role, email: user.email, name: user.name })
-  console.log('Login successful for email:', lowerEmail) // Added log
+  console.log('Login successful for user:', { id: user.id, email: user.email, role: user.role, name: user.name })
   res.json({ token, user: { id: user.id, email: user.email, role: user.role, name: user.name } })
 })
 
@@ -286,7 +313,32 @@ app.get('/api/books/:bookId', (req, res) => {
     return res.status(404).json({ error: 'Book not found' })
   }
   
-  res.json({ book })
+  // Find the book owner
+  let bookOwnerId = null
+  for (const [userId, userBooks] of books.entries()) {
+    if (userBooks.some(b => b.id === bookId)) {
+      bookOwnerId = userId
+      break
+    }
+  }
+  
+  // Get book owner info
+  let bookOwner = null
+  if (bookOwnerId) {
+    for (const [email, user] of users.entries()) {
+      if (user.id === bookOwnerId) {
+        bookOwner = { id: user.id, name: user.name, email: user.email }
+        break
+      }
+    }
+  }
+  
+  res.json({ 
+    book: {
+      ...book,
+      owner: bookOwner
+    }
+  })
 })
 
 // Get books by user ID (for testing purposes)
@@ -516,6 +568,138 @@ app.post('/api/exchange/requests/:requestId/reject', authMiddleware, (req, res) 
   res.json({ 
     success: true, 
     message: 'Exchange request rejected.' 
+  })
+})
+
+// Admin middleware
+function adminMiddleware(req, res, next) {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' })
+  }
+  next()
+}
+
+// Admin - Get all users
+app.get('/api/admin/users', authMiddleware, adminMiddleware, (req, res) => {
+  const allUsers = Array.from(users.values()).map(user => ({
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    isEmailVerified: user.isEmailVerified
+  }))
+  res.json({ users: allUsers })
+})
+
+// Admin - Get all books
+app.get('/api/admin/books', authMiddleware, adminMiddleware, (req, res) => {
+  const allBooks = []
+  for (const [userId, userBooks] of books.entries()) {
+    const user = Array.from(users.values()).find(u => u.id === userId)
+    userBooks.forEach(book => {
+      allBooks.push({
+        ...book,
+        ownerId: userId,
+        ownerName: user ? user.name : 'Unknown',
+        ownerEmail: user ? user.email : 'Unknown'
+      })
+    })
+  }
+  res.json({ books: allBooks })
+})
+
+// Admin - Delete any book
+app.delete('/api/admin/books/:bookId', authMiddleware, adminMiddleware, (req, res) => {
+  const { bookId } = req.params
+  
+  // Find and remove the book
+  let bookFound = false
+  for (const [userId, userBooks] of books.entries()) {
+    const bookIndex = userBooks.findIndex(book => book.id === bookId)
+    if (bookIndex !== -1) {
+      userBooks.splice(bookIndex, 1)
+      bookFound = true
+      break
+    }
+  }
+  
+  if (!bookFound) {
+    return res.status(404).json({ error: 'Book not found' })
+  }
+  
+  res.json({ success: true, message: 'Book deleted successfully' })
+})
+
+// Admin - Delete user
+app.delete('/api/admin/users/:userId', authMiddleware, adminMiddleware, (req, res) => {
+  const { userId } = req.params
+  
+  // Find user by ID
+  let userToDelete = null
+  for (const [email, user] of users.entries()) {
+    if (user.id === userId) {
+      userToDelete = { email, user }
+      break
+    }
+  }
+  
+  if (!userToDelete) {
+    return res.status(404).json({ error: 'User not found' })
+  }
+  
+  // Prevent admin from deleting themselves
+  if (userId === req.user.sub) {
+    return res.status(400).json({ error: 'Cannot delete your own account' })
+  }
+  
+  // Remove user and their books
+  users.delete(userToDelete.email)
+  books.delete(userId)
+  exchangeRequests.delete(userId)
+  
+  res.json({ success: true, message: 'User deleted successfully' })
+})
+
+// Admin - Update user role
+app.put('/api/admin/users/:userId/role', authMiddleware, adminMiddleware, (req, res) => {
+  const { userId } = req.params
+  const { role } = req.body
+  
+  if (!role || !['admin', 'user'].includes(role)) {
+    return res.status(400).json({ error: 'Invalid role. Must be admin or user' })
+  }
+  
+  // Find user by ID
+  let userToUpdate = null
+  for (const [email, user] of users.entries()) {
+    if (user.id === userId) {
+      userToUpdate = { email, user }
+      break
+    }
+  }
+  
+  if (!userToUpdate) {
+    return res.status(404).json({ error: 'User not found' })
+  }
+  
+  // Prevent admin from changing their own role
+  if (userId === req.user.sub) {
+    return res.status(400).json({ error: 'Cannot change your own role' })
+  }
+  
+  // Update role
+  userToUpdate.user.role = role
+  users.set(userToUpdate.email, userToUpdate.user)
+  
+  res.json({ 
+    success: true, 
+    message: 'User role updated successfully',
+    user: {
+      id: userToUpdate.user.id,
+      email: userToUpdate.user.email,
+      name: userToUpdate.user.name,
+      role: userToUpdate.user.role
+    }
   })
 })
 

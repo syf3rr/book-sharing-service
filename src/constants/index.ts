@@ -17,6 +17,13 @@ export const API_ENDPOINTS = {
     ACCEPT: (id: string) => `/api/exchange/requests/${id}/accept`,
     REJECT: (id: string) => `/api/exchange/requests/${id}/reject`,
   },
+  ADMIN: {
+    USERS: '/api/admin/users',
+    BOOKS: '/api/admin/books',
+    DELETE_BOOK: (id: string) => `/api/admin/books/${id}`,
+    DELETE_USER: (id: string) => `/api/admin/users/${id}`,
+    UPDATE_USER_ROLE: (id: string) => `/api/admin/users/${id}/role`,
+  },
 } as const
 
 export const ROUTES = {
@@ -29,6 +36,7 @@ export const ROUTES = {
   ADD_BOOK: '/me/books/add',
   EXCHANGE: '/exchange',
   TEST_EXCHANGE: '/test-exchange',
+  ADMIN: '/admin',
 } as const
 
 export const PAGINATION = {
