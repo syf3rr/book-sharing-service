@@ -1,158 +1,38 @@
-import { useState, useEffect } from 'react'
-import {
-  Alert,
-  Box,
-  Button,
-  CircularProgress,
-  Typography,
-  Card,
-  CardContent,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Chip,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Snackbar,
-  Grid,
-  Divider
-} from '@mui/material'
-import { Delete as DeleteIcon, Edit as EditIcon, Person as PersonIcon, Book as BookIcon } from '@mui/icons-material'
-import { useAuth } from '../context/AuthContext'
-import { 
-  apiGetAllUsers, 
-  apiGetAllBooks, 
-  apiDeleteUser, 
-  apiDeleteAnyBook, 
-  apiUpdateUserRole 
-} from '../api/client'
-import type { User, Book } from '../types'
+import React from 'react'
+import { Alert, Box, Button, CircularProgress, Typography, Card, CardContent, Dialog, DialogTitle, DialogContent, DialogActions, Select, MenuItem, FormControl, InputLabel, Snackbar, Grid, Divider } from '@mui/material'
+import { Person as PersonIcon, Book as BookIcon } from '@mui/icons-material'
+import { useAdminPanel } from '../hooks/useAdminPanel'
+import UsersTable from '../components/admin/UsersTable'
+import BooksGrid from '../components/admin/BooksGrid'
 
 export default function Admin() {
-  const { user, token } = useAuth()
-  const [users, setUsers] = useState<User[]>([])
-  const [books, setBooks] = useState<Book[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [snackbarOpen, setSnackbarOpen] = useState(false)
-  const [snackbarMessage, setSnackbarMessage] = useState('')
-  
-  // User management state
-  const [deleteUserDialogOpen, setDeleteUserDialogOpen] = useState(false)
-  const [userToDelete, setUserToDelete] = useState<User | null>(null)
-  const [roleDialogOpen, setRoleDialogOpen] = useState(false)
-  const [userToUpdate, setUserToUpdate] = useState<User | null>(null)
-  const [newRole, setNewRole] = useState<'admin' | 'user'>('user')
-  
-  // Book management state
-  const [deleteBookDialogOpen, setDeleteBookDialogOpen] = useState(false)
-  const [bookToDelete, setBookToDelete] = useState<Book | null>(null)
-
-  useEffect(() => {
-    if (user?.role !== 'admin') {
-      setError('Access denied. Admin privileges required.')
-      setLoading(false)
-      return
-    }
-    
-    fetchData()
-  }, [user])
-
-  const fetchData = async () => {
-    if (!token) return
-    
-    try {
-      setLoading(true)
-      setError(null)
-      
-      const [usersResponse, booksResponse] = await Promise.all([
-        apiGetAllUsers(token),
-        apiGetAllBooks(token)
-      ])
-      
-      setUsers(usersResponse.users)
-      setBooks(booksResponse.books)
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch admin data')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleDeleteUser = async () => {
-    if (!token || !userToDelete) return
-    
-    try {
-      await apiDeleteUser(token, userToDelete.id)
-      setUsers(prev => prev.filter(u => u.id !== userToDelete.id))
-      setSnackbarMessage('User deleted successfully')
-      setSnackbarOpen(true)
-      setDeleteUserDialogOpen(false)
-      setUserToDelete(null)
-    } catch (err: any) {
-      setSnackbarMessage(err.message || 'Failed to delete user')
-      setSnackbarOpen(true)
-    }
-  }
-
-  const handleDeleteBook = async () => {
-    if (!token || !bookToDelete) return
-    
-    try {
-      await apiDeleteAnyBook(token, bookToDelete.id)
-      setBooks(prev => prev.filter(b => b.id !== bookToDelete.id))
-      setSnackbarMessage('Book deleted successfully')
-      setSnackbarOpen(true)
-      setDeleteBookDialogOpen(false)
-      setBookToDelete(null)
-    } catch (err: any) {
-      setSnackbarMessage(err.message || 'Failed to delete book')
-      setSnackbarOpen(true)
-    }
-  }
-
-  const handleUpdateRole = async () => {
-    if (!token || !userToUpdate) return
-    
-    try {
-      const response = await apiUpdateUserRole(token, userToUpdate.id, newRole)
-      setUsers(prev => prev.map(u => u.id === userToUpdate.id ? response.user : u))
-      setSnackbarMessage('User role updated successfully')
-      setSnackbarOpen(true)
-      setRoleDialogOpen(false)
-      setUserToUpdate(null)
-    } catch (err: any) {
-      setSnackbarMessage(err.message || 'Failed to update user role')
-      setSnackbarOpen(true)
-    }
-  }
-
-  const openDeleteUserDialog = (userItem: User) => {
-    setUserToDelete(userItem)
-    setDeleteUserDialogOpen(true)
-  }
-
-  const openRoleDialog = (userItem: User) => {
-    setUserToUpdate(userItem)
-    setNewRole(userItem.role as 'admin' | 'user')
-    setRoleDialogOpen(true)
-  }
-
-  const openDeleteBookDialog = (book: Book) => {
-    setBookToDelete(book)
-    setDeleteBookDialogOpen(true)
-  }
+  const {
+    user,
+    users,
+    books,
+    loading,
+    error,
+    deleteUserDialogOpen,
+    userToDelete,
+    roleDialogOpen,
+    userToUpdate,
+    newRole,
+    deleteBookDialogOpen,
+    bookToDelete,
+    setSnackbarOpen,
+    setNewRole,
+    setDeleteUserDialogOpen,
+    setRoleDialogOpen,
+    setDeleteBookDialogOpen,
+    openDeleteUserDialog,
+    openRoleDialog,
+    openDeleteBookDialog,
+    handleDeleteUser,
+    handleDeleteBook,
+    handleUpdateRole,
+    snackbarOpen,
+    snackbarMessage,
+  } = useAdminPanel()
 
   if (user?.role !== 'admin') {
     return (
@@ -249,52 +129,12 @@ export default function Admin() {
             Users Management
           </Typography>
           <Divider sx={{ mb: 2 }} />
-          
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Email</TableCell>
-                  <TableCell>Role</TableCell>
-                  <TableCell align="center">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {users.map((userItem) => (
-                  <TableRow key={userItem.id}>
-                    <TableCell>{userItem.name}</TableCell>
-                    <TableCell>{userItem.email}</TableCell>
-                    <TableCell>
-                      <Chip 
-                        label={userItem.role} 
-                        color={userItem.role === 'admin' ? 'primary' : 'default'}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell align="center">
-                      <IconButton 
-                        onClick={() => openRoleDialog(userItem)}
-                        disabled={userItem.id === user?.id}
-                        size="small"
-                        color="primary"
-                      >
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton 
-                        onClick={() => openDeleteUserDialog(userItem)}
-                        disabled={userItem.id === user?.id}
-                        color="error"
-                        size="small"
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <UsersTable
+            users={users}
+            currentUserId={user?.id}
+            onEditRole={openRoleDialog}
+            onDelete={openDeleteUserDialog}
+          />
         </CardContent>
       </Card>
 
@@ -305,54 +145,7 @@ export default function Admin() {
             All Books Management
           </Typography>
           <Divider sx={{ mb: 2 }} />
-          
-          <Grid container spacing={2}>
-            {books.map((book) => (
-              <Grid item xs={12} sm={6} md={4} key={book.id}>
-                <Card variant="outlined">
-                  {book.photoUrl && (
-                    <Box
-                      component="img"
-                      sx={{
-                        height: 200,
-                        width: '100%',
-                        objectFit: 'cover'
-                      }}
-                      src={book.photoUrl}
-                      alt={book.name}
-                    />
-                  )}
-                  <CardContent>
-                    <Typography variant="h6" noWrap>
-                      {book.name}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" gutterBottom>
-                      by {book.author}
-                    </Typography>
-                    <Divider sx={{ my: 1 }} />
-                    <Typography variant="caption" display="block">
-                      Owner: {(book as any).ownerName || 'Unknown'}
-                    </Typography>
-                    <Typography variant="caption" display="block" color="text.secondary">
-                      {(book as any).ownerEmail || 'Unknown'}
-                    </Typography>
-                    <Box sx={{ mt: 2 }}>
-                      <Button
-                        variant="outlined"
-                        color="error"
-                        size="small"
-                        startIcon={<DeleteIcon />}
-                        onClick={() => openDeleteBookDialog(book)}
-                        fullWidth
-                      >
-                        Delete Book
-                      </Button>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
+          <BooksGrid books={books} onDelete={openDeleteBookDialog} />
         </CardContent>
       </Card>
 
