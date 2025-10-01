@@ -3,6 +3,9 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
+import multer from 'multer'
+import path from 'path'
+import fs from 'fs'
 
 dotenv.config()
 
@@ -14,10 +17,47 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173'
 app.use(cors({ origin: CORS_ORIGIN, credentials: true }))
 app.use(express.json())
 
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(process.cwd(), 'uploads', 'avatars')
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true })
+}
+
+// Configure multer for avatar uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir)
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
+    cb(null, `avatar-${req.user?.sub || 'unknown'}-${uniqueSuffix}${path.extname(file.originalname)}`)
+  }
+})
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true)
+    } else {
+      cb(new Error('Only image files are allowed'), false)
+    }
+  }
+})
+
+// Serve uploaded files statically
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')))
+
 // In-memory user storage for MVP
-// Structure: { id, email, passwordHash, role, isEmailVerified }
+// Structure: { id, email, passwordHash, role, isEmailVerified, name, avatar }
 const users = new Map()
 let nextUserId = 1
+
+// In-memory password reset tokens storage
+const resetTokens = new Map()
 
 // Add default admin user
 const adminPassword = bcrypt.hashSync('admin123', 10)
@@ -27,6 +67,7 @@ users.set('admin@example.com', {
   passwordHash: adminPassword,
   role: 'admin',
   name: 'Admin User',
+  avatar: null,
   isEmailVerified: true
 })
 
@@ -171,12 +212,13 @@ app.post('/api/register', async (req, res) => {
     passwordHash,
     name: name || email.split('@')[0], // Default name if not provided
     role: role,
+    avatar: null,
     isEmailVerified: false,
   }
   users.set(lowerEmail, user)
 
   const token = generateToken({ sub: user.id, role: user.role, email: user.email, name: user.name })
-  res.status(201).json({ token, user: { id: user.id, email: user.email, role: user.role, name: user.name } })
+  res.status(201).json({ token, user: { id: user.id, email: user.email, role: user.role, name: user.name, avatar: user.avatar } })
 })
 
 // Login
@@ -203,12 +245,43 @@ app.post('/api/login', async (req, res) => {
 
   const token = generateToken({ sub: user.id, role: user.role, email: user.email, name: user.name })
   console.log('Login successful for user:', { id: user.id, email: user.email, role: user.role, name: user.name })
-  res.json({ token, user: { id: user.id, email: user.email, role: user.role, name: user.name } })
+  res.json({ token, user: { id: user.id, email: user.email, role: user.role, name: user.name, avatar: user.avatar } })
 })
 
 // Example protected route
 app.get('/api/me', authMiddleware, (req, res) => {
-  res.json({ user: { id: req.user.sub, email: req.user.email, role: req.user.role, name: req.user.name } })
+  // Find user by ID to get current data
+  let user = null
+  for (const [email, userData] of users.entries()) {
+    if (userData.id === req.user.sub) {
+      user = userData
+      break
+    }
+  }
+  
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' })
+  }
+  
+  // Count user's books
+  const userBooks = books.get(req.user.sub) || []
+  
+  // Convert relative avatar URL to absolute URL if it exists
+  let avatarUrl = user.avatar
+  if (avatarUrl && !avatarUrl.startsWith('http')) {
+    avatarUrl = `http://localhost:${PORT}${avatarUrl}`
+  }
+
+  res.json({ 
+    user: { 
+      id: user.id, 
+      email: user.email, 
+      role: user.role, 
+      name: user.name, 
+      avatar: avatarUrl,
+      booksCount: userBooks.length
+    } 
+  })
 })
 
 // My Books - List
@@ -710,6 +783,199 @@ app.put('/api/admin/users/:userId/role', authMiddleware, adminMiddleware, (req, 
       role: userToUpdate.user.role
     }
   })
+})
+
+// Forgot Password
+app.post('/api/forgot-password', async (req, res) => {
+  const { email } = req.body
+  
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required' })
+  }
+  
+  const lowerEmail = String(email).toLowerCase().trim()
+  const user = users.get(lowerEmail)
+  
+  if (!user) {
+    // Don't reveal if user exists or not for security
+    return res.json({ message: 'If an account with that email exists, a password reset link has been sent.' })
+  }
+  
+  // Generate reset token
+  const resetToken = jwt.sign({ sub: user.id, type: 'password_reset' }, JWT_SECRET, { expiresIn: '1h' })
+  resetTokens.set(resetToken, { userId: user.id, email: user.email, expiresAt: Date.now() + 3600000 })
+  
+  // Simulate email sending
+  console.log('=== PASSWORD RESET EMAIL ===')
+  console.log(`To: ${user.email}`)
+  console.log(`Subject: Password Reset Request`)
+  console.log('')
+  console.log(`Hello ${user.name},`)
+  console.log('')
+  console.log('You requested a password reset for your Book Sharing Service account.')
+  console.log('')
+  console.log(`Click the link below to reset your password:`)
+  console.log(`http://localhost:5173/reset-password?token=${resetToken}`)
+  console.log('')
+  console.log('This link will expire in 1 hour.')
+  console.log('')
+  console.log('If you did not request this password reset, please ignore this email.')
+  console.log('')
+  console.log('Best regards,')
+  console.log('Book Sharing Service')
+  console.log('===============================')
+  
+  res.json({ message: 'If an account with that email exists, a password reset link has been sent.' })
+})
+
+// Reset Password
+app.post('/api/reset-password', async (req, res) => {
+  const { token, newPassword } = req.body
+  
+  if (!token || !newPassword) {
+    return res.status(400).json({ error: 'Token and new password are required' })
+  }
+  
+  if (newPassword.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters long' })
+  }
+  
+  // Check if token exists and is valid
+  const tokenData = resetTokens.get(token)
+  if (!tokenData) {
+    return res.status(400).json({ error: 'Invalid or expired reset token' })
+  }
+  
+  // Check if token is expired
+  if (Date.now() > tokenData.expiresAt) {
+    resetTokens.delete(token)
+    return res.status(400).json({ error: 'Reset token has expired' })
+  }
+  
+  try {
+    // Verify JWT token
+    const payload = jwt.verify(token, JWT_SECRET)
+    if (payload.type !== 'password_reset') {
+      return res.status(400).json({ error: 'Invalid token type' })
+    }
+    
+    // Find user by ID
+    let user = null
+    for (const [email, userData] of users.entries()) {
+      if (userData.id === payload.sub) {
+        user = { email, ...userData }
+        break
+      }
+    }
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' })
+    }
+    
+    // Update password
+    const passwordHash = await bcrypt.hash(newPassword, 10)
+    user.passwordHash = passwordHash
+    users.set(user.email, user)
+    
+    // Remove used token
+    resetTokens.delete(token)
+    
+    console.log(`Password reset successful for user: ${user.email}`)
+    
+    res.json({ message: 'Password has been reset successfully' })
+  } catch (error) {
+    console.error('Password reset error:', error)
+    return res.status(400).json({ error: 'Invalid or expired reset token' })
+  }
+})
+
+// Profile - Update profile
+app.put('/api/me/profile', authMiddleware, async (req, res) => {
+  const { name, email, avatar } = req.body
+  const userId = req.user.sub
+  
+  // Find user by ID
+  let user = null
+  let userEmail = null
+  for (const [emailKey, userData] of users.entries()) {
+    if (userData.id === userId) {
+      user = userData
+      userEmail = emailKey
+      break
+    }
+  }
+  
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' })
+  }
+  
+  // Check if email is being changed and if it's already taken
+  if (email && email !== user.email) {
+    const lowerEmail = String(email).toLowerCase().trim()
+    if (users.has(lowerEmail)) {
+      return res.status(409).json({ error: 'Email already in use' })
+    }
+    
+    // Update email in users map
+    users.delete(userEmail)
+    user.email = lowerEmail
+    users.set(lowerEmail, user)
+    userEmail = lowerEmail
+  }
+  
+  // Update user data
+  if (name) user.name = name
+  if (avatar !== undefined) user.avatar = avatar
+  
+  users.set(userEmail, user)
+  
+  // Count user's books
+  const userBooks = books.get(userId) || []
+  
+  // Convert relative avatar URL to absolute URL if it exists
+  let avatarUrl = user.avatar
+  if (avatarUrl && !avatarUrl.startsWith('http')) {
+    avatarUrl = `http://localhost:${PORT}${avatarUrl}`
+  }
+  
+  res.json({
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      avatar: avatarUrl,
+      booksCount: userBooks.length
+    }
+  })
+})
+
+// Profile - Upload avatar
+app.post('/api/me/avatar', authMiddleware, upload.single('avatar'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' })
+    }
+
+    // Generate the absolute URL for the uploaded file
+    const avatarUrl = `http://localhost:${PORT}/uploads/avatars/${req.file.filename}`
+    
+    res.json({ avatarUrl })
+  } catch (error) {
+    console.error('Avatar upload error:', error)
+    res.status(500).json({ error: 'Failed to upload avatar' })
+  }
+})
+
+// Profile - Get exchange requests for current user
+app.get('/api/me/exchange-requests', authMiddleware, (req, res) => {
+  const userId = req.user.sub
+  const userRequests = exchangeRequests.get(userId) || []
+  
+  // Sort by creation date (newest first)
+  userRequests.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+  
+  res.json({ requests: userRequests })
 })
 
 app.listen(PORT, () => {

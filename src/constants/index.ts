@@ -1,28 +1,37 @@
+const API_BASE_URL = 'http://localhost:4000'
+
 export const API_ENDPOINTS = {
   AUTH: {
-    LOGIN: '/api/login',
-    REGISTER: '/api/register',
-    ME: '/api/me',
+    LOGIN: `${API_BASE_URL}/api/login`,
+    REGISTER: `${API_BASE_URL}/api/register`,
+    ME: `${API_BASE_URL}/api/me`,
+    FORGOT_PASSWORD: `${API_BASE_URL}/api/forgot-password`,
+    RESET_PASSWORD: `${API_BASE_URL}/api/reset-password`,
   },
   BOOKS: {
-    LIST: '/api/books',
-    DETAIL: (id: string) => `/api/books/${id}`,
-    MY_BOOKS: '/api/me/books',
-    ADD: '/api/me/books',
-    DELETE: (id: string) => `/api/me/books/${id}`,
-    EXCHANGE_REQUEST: '/api/books/exchange-request',
+    LIST: `${API_BASE_URL}/api/books`,
+    DETAIL: (id: string) => `${API_BASE_URL}/api/books/${id}`,
+    MY_BOOKS: `${API_BASE_URL}/api/me/books`,
+    ADD: `${API_BASE_URL}/api/me/books`,
+    DELETE: (id: string) => `${API_BASE_URL}/api/me/books/${id}`,
+    EXCHANGE_REQUEST: `${API_BASE_URL}/api/books/exchange-request`,
   },
   EXCHANGE: {
-    REQUESTS: '/api/exchange/requests',
-    ACCEPT: (id: string) => `/api/exchange/requests/${id}/accept`,
-    REJECT: (id: string) => `/api/exchange/requests/${id}/reject`,
+    REQUESTS: `${API_BASE_URL}/api/exchange/requests`,
+    ACCEPT: (id: string) => `${API_BASE_URL}/api/exchange/requests/${id}/accept`,
+    REJECT: (id: string) => `${API_BASE_URL}/api/exchange/requests/${id}/reject`,
   },
   ADMIN: {
-    USERS: '/api/admin/users',
-    BOOKS: '/api/admin/books',
-    DELETE_BOOK: (id: string) => `/api/admin/books/${id}`,
-    DELETE_USER: (id: string) => `/api/admin/users/${id}`,
-    UPDATE_USER_ROLE: (id: string) => `/api/admin/users/${id}/role`,
+    USERS: `${API_BASE_URL}/api/admin/users`,
+    BOOKS: `${API_BASE_URL}/api/admin/books`,
+    DELETE_BOOK: (id: string) => `${API_BASE_URL}/api/admin/books/${id}`,
+    DELETE_USER: (id: string) => `${API_BASE_URL}/api/admin/users/${id}`,
+    UPDATE_USER_ROLE: (id: string) => `${API_BASE_URL}/api/admin/users/${id}/role`,
+  },
+  PROFILE: {
+    UPDATE: `${API_BASE_URL}/api/me/profile`,
+    UPLOAD_AVATAR: `${API_BASE_URL}/api/me/avatar`,
+    EXCHANGE_REQUESTS: `${API_BASE_URL}/api/me/exchange-requests`,
   },
 } as const
 
@@ -37,6 +46,9 @@ export const ROUTES = {
   EXCHANGE: '/exchange',
   TEST_EXCHANGE: '/test-exchange',
   ADMIN: '/admin',
+  PROFILE: '/profile',
+  FORGOT_PASSWORD: '/forgot-password',
+  RESET_PASSWORD: '/reset-password',
 } as const
 
 export const PAGINATION = {

@@ -35,6 +35,9 @@ export default function Login() {
         <TextField label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} fullWidth required />
         <TextField label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} fullWidth required />
         <Button type="submit" variant="contained" disabled={loading}>{loading ? 'Logging in...' : 'Login'}</Button>
+        <Typography variant="body2" align="center">
+          <RouterLink to={ROUTES.FORGOT_PASSWORD}>Забули пароль?</RouterLink>
+        </Typography>
         <Typography variant="body2">No account? <RouterLink to={ROUTES.REGISTER}>Register</RouterLink></Typography>
       </Stack>
     </Box>

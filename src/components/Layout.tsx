@@ -1,15 +1,25 @@
-import { AppBar, Box, Button, Container, Toolbar, Typography } from '@mui/material'
+import { AppBar, Box, Button, Container, Toolbar, Typography, Avatar, Menu, MenuItem, IconButton } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
+import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { ROUTES } from '../constants'
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth()
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   
   // Debug logging
   console.log('Layout - User:', user)
   console.log('Layout - User role:', user?.role)
   console.log('Layout - Is admin?', user?.role === 'admin')
+
+  const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget)
+  }
+
+  const handleProfileMenuClose = () => {
+    setAnchorEl(null)
+  }
   
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
@@ -38,7 +48,45 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   User Control Panel
                 </Button>
               )}
-              <Button color="inherit" onClick={logout}>Logout</Button>
+              <IconButton
+                size="large"
+                edge="end"
+                aria-label="account of current user"
+                aria-controls="profile-menu"
+                aria-haspopup="true"
+                onClick={handleProfileMenuOpen}
+                color="inherit"
+                sx={{ ml: 2 }}
+              >
+                <Avatar 
+                  src={user.avatar} 
+                  sx={{ width: 32, height: 32 }}
+                >
+                  {user.name.charAt(0).toUpperCase()}
+                </Avatar>
+              </IconButton>
+              <Menu
+                id="profile-menu"
+                anchorEl={anchorEl}
+                anchorOrigin={{
+                  vertical: 'bottom',
+                  horizontal: 'right',
+                }}
+                keepMounted
+                transformOrigin={{
+                  vertical: 'top',
+                  horizontal: 'right',
+                }}
+                open={Boolean(anchorEl)}
+                onClose={handleProfileMenuClose}
+              >
+                <MenuItem onClick={handleProfileMenuClose} component={RouterLink} to={ROUTES.PROFILE}>
+                  Профіль
+                </MenuItem>
+                <MenuItem onClick={() => { handleProfileMenuClose(); logout(); }}>
+                  Вийти
+                </MenuItem>
+              </Menu>
             </>
           ) : (
             <>

@@ -5,6 +5,8 @@ export interface User {
   email: string
   role: UserRole
   name: string
+  avatar?: string
+  booksCount?: number
 }
 
 export interface BookOwner {
@@ -79,4 +81,24 @@ export interface ExchangeRequestData {
 
 export interface ExchangeRequestsResponse {
   requests: ExchangeRequestData[]
+}
+
+export interface UpdateProfileParams {
+  name?: string
+  email?: string
+  avatar?: string
+}
+
+export interface ForgotPasswordParams {
+  email: string
+}
+
+export interface ResetPasswordParams {
+  token: string
+  newPassword: string
+}
+
+export interface ProfileResponse {
+  user: User
+  exchangeRequests: ExchangeRequestData[]
 }
