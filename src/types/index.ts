@@ -98,6 +98,15 @@ export interface ResetPasswordParams {
   newPassword: string
 }
 
+export interface ChangePasswordParams {
+  currentPassword: string
+  newPassword: string
+}
+
+export interface ChangePasswordResponse {
+  message: string
+}
+
 export interface ProfileResponse {
   user: User
   exchangeRequests: ExchangeRequestData[]

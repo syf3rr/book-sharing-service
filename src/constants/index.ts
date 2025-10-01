@@ -32,6 +32,7 @@ export const API_ENDPOINTS = {
     UPDATE: `${API_BASE_URL}/api/me/profile`,
     UPLOAD_AVATAR: `${API_BASE_URL}/api/me/avatar`,
     EXCHANGE_REQUESTS: `${API_BASE_URL}/api/me/exchange-requests`,
+    CHANGE_PASSWORD: `${API_BASE_URL}/api/me/password`,
   },
 } as const
 

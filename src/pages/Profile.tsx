@@ -35,7 +35,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { useApiClient } from '../hooks/useApiClient'
 import { API_ENDPOINTS } from '../constants'
-import type { UpdateProfileParams, ExchangeRequestData } from '../types'
+import type { UpdateProfileParams, ExchangeRequestData, ChangePasswordParams } from '../types'
 
 export default function Profile() {
   const { user, updateUser } = useAuth()
@@ -52,6 +52,8 @@ export default function Profile() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [selectedRequest, setSelectedRequest] = useState<ExchangeRequestData | null>(null)
   const [requestDialogOpen, setRequestDialogOpen] = useState(false)
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
+  const [passwordLoading, setPasswordLoading] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -145,6 +147,43 @@ export default function Profile() {
       setMessage({ type: 'error', text: error.message || 'Помилка при оновленні профілю' })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handlePasswordChangeInput = (field: 'currentPassword' | 'newPassword' | 'confirmPassword') => (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value
+    setPasswordForm(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleChangePassword = async () => {
+    if (!user) return
+    if (!passwordForm.currentPassword || !passwordForm.newPassword) {
+      setMessage({ type: 'error', text: 'Введіть поточний та новий паролі' })
+      return
+    }
+    if (passwordForm.newPassword.length < 6) {
+      setMessage({ type: 'error', text: 'Новий пароль має містити щонайменше 6 символів' })
+      return
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setMessage({ type: 'error', text: 'Паролі не співпадають' })
+      return
+    }
+
+    setPasswordLoading(true)
+    setMessage(null)
+    try {
+      const payload: ChangePasswordParams = {
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      }
+      await api.put<{ message: string }>(API_ENDPOINTS.PROFILE.CHANGE_PASSWORD, payload)
+      setMessage({ type: 'success', text: 'Пароль успішно змінено' })
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.message || 'Не вдалося змінити пароль' })
+    } finally {
+      setPasswordLoading(false)
     }
   }
 
@@ -292,6 +331,46 @@ export default function Profile() {
                   Редагувати профіль
                 </Button>
               )}
+            </CardContent>
+          </Card>
+          {/* Change Password */}
+          <Card sx={{ mt: 3 }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Змінити пароль
+              </Typography>
+              <TextField
+                fullWidth
+                label="Поточний пароль"
+                type="password"
+                value={passwordForm.currentPassword}
+                onChange={handlePasswordChangeInput('currentPassword')}
+                margin="normal"
+                autoComplete="current-password"
+              />
+              <TextField
+                fullWidth
+                label="Новий пароль"
+                type="password"
+                value={passwordForm.newPassword}
+                onChange={handlePasswordChangeInput('newPassword')}
+                margin="normal"
+                autoComplete="new-password"
+              />
+              <TextField
+                fullWidth
+                label="Підтвердження нового паролю"
+                type="password"
+                value={passwordForm.confirmPassword}
+                onChange={handlePasswordChangeInput('confirmPassword')}
+                margin="normal"
+                autoComplete="new-password"
+              />
+              <Box sx={{ mt: 2 }}>
+                <Button variant="contained" onClick={handleChangePassword} disabled={passwordLoading}>
+                  {passwordLoading ? <CircularProgress size={20} /> : 'Оновити пароль'}
+                </Button>
+              </Box>
             </CardContent>
           </Card>
         </Grid>

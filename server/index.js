@@ -967,6 +967,49 @@ app.post('/api/me/avatar', authMiddleware, upload.single('avatar'), (req, res) =
   }
 })
 
+// Profile - Change password (requires current password)
+app.put('/api/me/password', authMiddleware, async (req, res) => {
+  const { currentPassword, newPassword } = req.body || {}
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: 'Current and new password are required' })
+  }
+
+  if (String(newPassword).length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters long' })
+  }
+
+  const userId = req.user.sub
+
+  // Find user by ID
+  let user = null
+  let userEmail = null
+  for (const [emailKey, userData] of users.entries()) {
+    if (userData.id === userId) {
+      user = userData
+      userEmail = emailKey
+      break
+    }
+  }
+
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' })
+  }
+
+  // Verify current password
+  const ok = await bcrypt.compare(currentPassword, user.passwordHash)
+  if (!ok) {
+    return res.status(401).json({ error: 'Current password is incorrect' })
+  }
+
+  // Update password
+  const passwordHash = await bcrypt.hash(newPassword, 10)
+  user.passwordHash = passwordHash
+  users.set(userEmail, user)
+
+  return res.json({ message: 'Password updated successfully' })
+})
+
 // Profile - Get exchange requests for current user
 app.get('/api/me/exchange-requests', authMiddleware, (req, res) => {
   const userId = req.user.sub
