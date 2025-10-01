@@ -529,17 +529,26 @@ function performBookExchange(bookOwnerId, request) {
   books.set(request.requesterId, requesterBooks)
   
   // For each book offered by requester, add it to owner's collection
+  // and remove it from requester's collection
   request.requesterBooks.forEach(requesterBook => {
     const bookForOwner = {
       ...requesterBook,
       id: `exchanged-${Date.now()}-${requesterBook.id}` // New ID to avoid conflicts
     }
     updatedOwnerBooks.push(bookForOwner)
+    
+    // Remove the book from requester's collection
+    const requesterBookIndex = requesterBooks.findIndex(book => book.id === requesterBook.id)
+    if (requesterBookIndex !== -1) {
+      requesterBooks.splice(requesterBookIndex, 1)
+    }
   })
   books.set(bookOwnerId, updatedOwnerBooks)
+  books.set(request.requesterId, requesterBooks) // Update requester's books
   
   console.log(`Exchanged book "${request.bookName}" from user ${bookOwnerId} to user ${request.requesterId}`)
   console.log(`Added ${request.requesterBooks.length} books from user ${request.requesterId} to user ${bookOwnerId}`)
+  console.log(`Removed ${request.requesterBooks.length} books from user ${request.requesterId} (requester)`)
 }
 
 // Reject exchange request
