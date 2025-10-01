@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { apiGetBooks } from '../api/client'
 import type { BookSearchParams, BooksResponse } from '../types'
-import { debounce } from '../utils/helpers'
 
 export function useBooksSearch(initialParams: BookSearchParams = {}) {
   const [booksData, setBooksData] = useState<BooksResponse | null>(null)

@@ -1,5 +1,5 @@
 import { API_ENDPOINTS } from '../constants'
-import type { AuthResponse, Book, BooksResponse, BookSearchParams, AddBookParams, ExchangeRequest, ExchangeRequestResponse, ExchangeRequestData, ExchangeRequestsResponse } from '../types'
+import type { AuthResponse, Book, BooksResponse, BookSearchParams, AddBookParams, ExchangeRequest, ExchangeRequestResponse, ExchangeRequestsResponse, User } from '../types'
 import { isNetworkError } from '../utils/helpers'
 
 const defaultHeaders = (): HeadersInit => ({

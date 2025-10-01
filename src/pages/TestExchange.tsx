@@ -11,12 +11,9 @@ import {
   Divider,
   Grid
 } from '@mui/material'
-import { useAuth } from '../context/AuthContext'
-import { apiGetMyBooks } from '../api/client'
 import type { Book } from '../types'
 
 export default function TestExchange() {
-  const { user, token } = useAuth()
   const [demoBooks, setDemoBooks] = useState<Book[]>([])
   const [testUserBooks, setTestUserBooks] = useState<Book[]>([])
   const [loading, setLoading] = useState(true)
