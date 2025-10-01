@@ -15,6 +15,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {user ? (
             <>
               <Typography sx={{ mr: 2 }}>Hello, {capitalizeFirstLetter(user.name)}</Typography>
+              <Button color="inherit" component={RouterLink} to="/me/books">My Books</Button>
               <Button color="inherit" onClick={logout}>Logout</Button>
             </>
           ) : (

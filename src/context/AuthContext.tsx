@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { apiLogin, apiMe, apiRegister, type AuthResponse } from '../api/client'
 
 type User = { id: string; email: string; role: string; name: string }
@@ -32,7 +32,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const me = await apiMe(existing)
         setUser(me.user)
         setToken(existing)
-      } catch {
+      } catch (error) {
+        console.error('Auth initialization failed:', error)
         localStorage.removeItem(TOKEN_KEY)
         setUser(null)
         setToken(null)

@@ -1,6 +1,7 @@
 import { Alert, Button, Stack, Typography } from '@mui/material'
 import { useAuth } from '../context/AuthContext'
 import { capitalizeFirstLetter } from '../utils/format'
+import { Link as RouterLink } from 'react-router-dom'
 
 export default function Dashboard() {
   const { user } = useAuth()
@@ -11,7 +12,8 @@ export default function Dashboard() {
       {user && (
         <>
           <Typography>Welcome, {capitalizeFirstLetter(user.name)}</Typography>
-          <Button variant="outlined" href="/">Home</Button>
+          <Button variant="outlined" component={RouterLink} to="/">Home</Button>
+          <Button variant="outlined" component={RouterLink} to="/me/books">Go to My Books</Button>
         </>
       )}
     </Stack>
